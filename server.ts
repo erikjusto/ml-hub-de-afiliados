@@ -2,7 +2,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
-import { createServer as createViteServer } from 'vite';
+// vite imported dynamically in development
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -266,13 +266,15 @@ const PORT = Number(process.env.PORT) || 3000;
   // Vite middleware for development
   // Runs only if not in Vercel. Vercel automatically runs Vite to serve the frontend.
   if (process.env.NODE_ENV !== 'production' && process.env.VERCEL !== '1') {
-    createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    }).then(vite => {
-      app.use(vite.middlewares);
-      app.listen(PORT, '0.0.0.0', () => {
-        console.log(`Server running on http://localhost:${PORT}`);
+    import('vite').then(({ createServer }) => {
+      createServer({
+        server: { middlewareMode: true },
+        appType: 'spa',
+      }).then(vite => {
+        app.use(vite.middlewares);
+        app.listen(PORT, '0.0.0.0', () => {
+          console.log(`Server running on http://localhost:${PORT}`);
+        });
       });
     });
   } else if (process.env.VERCEL !== '1') {
