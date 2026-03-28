@@ -25,9 +25,16 @@ const PORT = Number(process.env.PORT) || 3000;
     
     try {
       const headers: Record<string, string> = {
-        'User-Agent': 'ML-App/2.0',
-        'Accept': 'application/json'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Referer': 'https://www.mercadolivre.com.br/',
+        'Cache-Control': 'no-cache'
       };
+
+      if (authHeader) {
+        headers['Authorization'] = authHeader;
+      }
 
       const response = await fetch('https://api.mercadolibre.com/sites/MLB/categories', { headers });
       
@@ -70,8 +77,21 @@ const PORT = Number(process.env.PORT) || 3000;
     
     try {
       const headers: Record<string, string> = {
-        'User-Agent': 'ML-App/2.0',
-        'Accept': 'application/json'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Referer': 'https://www.mercadolivre.com.br/',
+        'Origin': 'https://www.mercadolivre.com.br',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+        'sec-ch-ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-site',
+        'dnt': '1'
       };
 
       if (authHeader) {
@@ -113,9 +133,19 @@ const PORT = Number(process.env.PORT) || 3000;
     const authHeader = req.headers['authorization'];
     try {
       const headers: Record<string, string> = {
-        'User-Agent': 'ML-App/1.0',
-        'Accept': 'application/json'
-      };if (authHeader) {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Referer': 'https://www.mercadolivre.com.br/',
+        'sec-ch-ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-site'
+      };
+
+      if (authHeader) {
         headers['Authorization'] = authHeader;
       }
 
