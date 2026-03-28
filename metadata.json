@@ -1,0 +1,5 @@
+{
+  "name": "ML Hub de Afiliados",
+  "description": "Um painel moderno em React para extrair e importar produtos do Mercado Livre como itens de afiliado, inspirado em fluxos de trabalho de scraping de alta performance.",
+  "requestFramePermissions": []
+}
