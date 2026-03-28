@@ -74,8 +74,8 @@ const ImporterTab: React.FC<ImporterTabProps> = ({
     }
   };
 
-  const handleImport = async () => {
-    if (!preview) return;
+  const handleImport = async (updatedProduct: ProductData) => {
+    if (!updatedProduct) return;
 
     if (!wooConfig.url || !wooConfig.consumerKey) {
       setError("Por favor, configure as credenciais do WooCommerce primeiro.");
@@ -86,11 +86,11 @@ const ImporterTab: React.FC<ImporterTabProps> = ({
     setError(null);
 
     try {
-      await createWooProduct(wooConfig, preview);
-      onImportSuccess(preview);
+      await createWooProduct(wooConfig, updatedProduct);
+      onImportSuccess(updatedProduct);
       setPreview(null);
       setUrl('');
-      alert('Produto importado com sucesso para sua loja WooCommerce!');
+      alert('Produto e Link de Afiliado importados com sucesso para sua loja WooCommerce!');
     } catch (err: any) {
       setError(`Erro no WooCommerce: ${err.message}`);
     } finally {

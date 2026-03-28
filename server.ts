@@ -2,6 +2,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import { GoogleGenAI, Type } from '@google/genai';
 // vite imported dynamically in development
 import dotenv from 'dotenv';
 
@@ -163,6 +164,91 @@ const PORT = Number(process.env.PORT) || 3000;
       res.json(data);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch categories' });
+    }
+  });
+
+  // Gemini AI - Product Extraction
+  app.post('/api/gemini/extract', async (req, res) => {
+    const { url } = req.body;
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!url) return res.status(400).json({ error: 'URL is required' });
+    if (!apiKey) return res.status(500).json({ error: 'GEMINI_API_KEY not configured on server' });
+
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const prompt = `
+        Aja como um scraper de elite especializado no Mercado Livre. Analise minuciosamente a URL: ${url}
+        
+        INSTRUÇÕES DE EXTRAÇÃO CRÍTICAS:
+
+        1. PREÇO PRINCIPAL (VALOR ATUAL):
+           - Localize o container de preço principal (geralmente .ui-pdp-price__main-container).
+           - Extraia a fração (.andes-money-amount__fraction) e os centavos (.andes-money-amount__cents).
+           - IMPORTANTE: Se o valor for 1.299 e os centavos 90, o resultado deve ser "1.299,90". Nunca ignore os centavos.
+        
+        2. PARCELAMENTO (NOVO PADRÃO):
+           - Procure especificamente pelo elemento com id="pricing_price_subtitle".
+           - Dentro dele, capture o texto completo. Exemplo: "18x R$ 7,60 com Linha de Crédito".
+           - Formate o resultado final como: "18x R$ 7,60 com Linha de Crédito".
+           - Se não encontrar este ID, procure por classes como "ui-pdp-price__subtitles".
+        
+        3. IMAGEM EM ALTA RESOLUÇÃO (HD):
+           - Localize a imagem principal do produto.
+           - Você DEVE converter o sufixo final (antes da extensão) para "-O". 
+           - Exemplo: "...-F.webp" torna-se "...-O.webp" ou "...-O.jpg".
+           - Isso garante a imagem na maior qualidade disponível.
+
+        4. DESCRIÇÃO:
+           - Extraia os dados técnicos principais de forma concisa e profissional.
+
+        Retorne estritamente este JSON:
+        {
+          "name": "Título Completo do Produto",
+          "price": "VALOR_COM_CENTAVOS (ex: 1.299,90)",
+          "currency": "R$",
+          "installmentInfo": "TEXTO_COMPLETO_DO_PARCELAMENTO",
+          "description": "Resumo das especificações técnicas",
+          "imageUrl": "URL_DA_IMAGEM_CONVERTIDA_PARA_HD"
+        }
+      `;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              name: { type: Type.STRING },
+              price: { type: Type.STRING },
+              currency: { type: Type.STRING },
+              installmentInfo: { type: Type.STRING },
+              description: { type: Type.STRING },
+              imageUrl: { type: Type.STRING },
+            },
+            required: ['name', 'price', 'imageUrl', 'installmentInfo']
+          }
+        }
+      });
+
+      const data = JSON.parse(response.text || '{}');
+      
+      res.json({
+        name: data.name || 'Produto Mercado Livre',
+        price: data.price || '0,00',
+        currency: data.currency || 'R$',
+        installmentInfo: data.installmentInfo || '',
+        description: data.description || 'Descrição não extraída.',
+        imageUrl: data.imageUrl || '',
+        affiliateUrl: url,
+      });
+
+    } catch (error: any) {
+      console.error('Gemini Extraction API Error:', error);
+      res.status(500).json({ error: 'Falha ao processar a URL no backend via IA.' });
     }
   });
 

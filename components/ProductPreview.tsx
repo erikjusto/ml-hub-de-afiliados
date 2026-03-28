@@ -12,19 +12,21 @@ import {
   ExternalLink, 
   CloudUpload, 
   Pencil,
-  Loader2
+  Loader2,
+  Link as LinkIcon
 } from 'lucide-react';
 
 interface ProductPreviewProps {
   data: ProductData;
   loading?: boolean;
-  onImport: () => void;
+  onImport: (updatedData: ProductData) => void;
   onCancel: () => void;
 }
 
 const ProductPreview: React.FC<ProductPreviewProps> = ({ data, loading, onImport, onCancel }) => {
   const [imageError, setImageError] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [affiliateUrl, setAffiliateUrl] = useState(data.affiliateUrl || '');
   
   const decimalPrice = normalizePrice(data.price);
 
@@ -134,19 +136,37 @@ const ProductPreview: React.FC<ProductPreviewProps> = ({ data, loading, onImport
             <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
               <span className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                Produto pronto para sincronização
+                Dados validados
               </span>
               <a href={data.affiliateUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700 font-bold flex items-center gap-1">
-                Ver original <ExternalLink className="w-3 h-3" />
+                Ver anúncio original <ExternalLink className="w-3 h-3" />
               </a>
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 space-y-3">
+              <label className="block">
+                <span className="text-xs font-bold text-yellow-800 uppercase tracking-wide flex items-center gap-2">
+                  <LinkIcon className="w-4 h-4" /> Link de Afiliado (Obrigatório)
+                </span>
+                <p className="text-[10px] text-yellow-700 mt-1 mb-2">Cole aqui o seu link encurtado oficial gerado no painel do Mercado Livre.</p>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={affiliateUrl}
+                    onChange={(e) => setAffiliateUrl(e.target.value)}
+                    placeholder="https://mercadolivre.com/sec/..."
+                    className="block w-full pl-3 pr-3 py-3 rounded-lg border border-yellow-300 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-200 outline-none transition-all placeholder:text-yellow-300 text-yellow-900 bg-white"
+                  />
+                </div>
+              </label>
             </div>
 
             <div className="flex gap-3">
               <button 
-                onClick={onImport}
-                disabled={loading}
+                onClick={() => onImport({ ...data, affiliateUrl })}
+                disabled={loading || !affiliateUrl.trim()}
                 className={`flex-[2] text-white font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] ${
-                  loading ? 'bg-slate-400 shadow-none cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800 shadow-slate-900/20'
+                  loading || !affiliateUrl.trim() ? 'bg-slate-400 shadow-none cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800 shadow-slate-900/20'
                 }`}
               >
                 {loading ? (
