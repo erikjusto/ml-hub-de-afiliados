@@ -176,9 +176,68 @@ const PORT = Number(process.env.PORT) || 3000;
     if (!apiKey) return res.status(500).json({ error: 'GEMINI_API_KEY not configured on server' });
 
     try {
+      // Resolve short URLs (meli.la, mercadolivre.com/sec, etc.) to full product URL
+      let resolvedUrl = url;
+      const shortDomains = ['meli.la', 'mercadolivre.com/sec', 'mercadolibre.com/sec'];
+      const isShortUrl = shortDomains.some(d => url.includes(d));
+      
+      if (isShortUrl) {
+        try {
+          console.log('Resolving short URL:', url);
+          const redirectRes = await fetch(url, { 
+            method: 'HEAD', 
+            redirect: 'follow',
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+            }
+          });
+          resolvedUrl = redirectRes.url || url;
+          console.log('Resolved URL:', resolvedUrl);
+        } catch (e) {
+          console.warn('Could not resolve short URL, using original:', url);
+        }
+      }
+
+      // Extract ML Item ID from URL if possible (MLB-XXXXXXXXX or MLB/XXXXXXXXX)
+      const mlbMatch = resolvedUrl.match(/MLB[-\/]?(\d+)/i);
+      let mlApiData: any = null;
+
+      if (mlbMatch) {
+        const itemId = `MLB${mlbMatch[1]}`;
+        console.log('Found ML Item ID:', itemId);
+        try {
+          const apiRes = await fetch(`https://api.mercadolibre.com/items/${itemId}`, {
+            headers: { 'User-Agent': 'ML-App/2.0', 'Accept': 'application/json' }
+          });
+          if (apiRes.ok) {
+            mlApiData = await apiRes.json();
+            console.log('Got ML API data for:', mlApiData.title);
+          }
+        } catch (e) {
+          console.warn('ML API item fetch failed, falling back to Gemini:', e);
+        }
+      }
+
+      // If we got data from ML API directly, use it (faster + more accurate)
+      if (mlApiData) {
+        const price = mlApiData.price ? mlApiData.price.toString().replace('.', ',') : '0,00';
+        const imageUrl = mlApiData.pictures?.[0]?.secure_url || mlApiData.thumbnail?.replace('-I.jpg', '-O.jpg') || '';
+        
+        return res.json({
+          name: mlApiData.title || 'Produto Mercado Livre',
+          price: price,
+          currency: mlApiData.currency_id === 'BRL' ? 'R$' : mlApiData.currency_id || 'R$',
+          installmentInfo: '',
+          description: mlApiData.attributes?.map((a: any) => `${a.name}: ${a.value_name}`).join('\n').slice(0, 500) || 'Descrição extraída via API.',
+          imageUrl: imageUrl,
+          affiliateUrl: url,
+        });
+      }
+
+      // Fallback: Use Gemini AI with Google Search
       const ai = new GoogleGenAI({ apiKey });
       const prompt = `
-        Aja como um scraper de elite especializado no Mercado Livre. Analise minuciosamente a URL: ${url}
+        Aja como um scraper de elite especializado no Mercado Livre. Analise minuciosamente a URL: ${resolvedUrl}
         
         INSTRUÇÕES DE EXTRAÇÃO CRÍTICAS:
 
@@ -190,14 +249,11 @@ const PORT = Number(process.env.PORT) || 3000;
         2. PARCELAMENTO (NOVO PADRÃO):
            - Procure especificamente pelo elemento com id="pricing_price_subtitle".
            - Dentro dele, capture o texto completo. Exemplo: "18x R$ 7,60 com Linha de Crédito".
-           - Formate o resultado final como: "18x R$ 7,60 com Linha de Crédito".
-           - Se não encontrar este ID, procure por classes como "ui-pdp-price__subtitles".
         
         3. IMAGEM EM ALTA RESOLUÇÃO (HD):
            - Localize a imagem principal do produto.
            - Você DEVE converter o sufixo final (antes da extensão) para "-O". 
            - Exemplo: "...-F.webp" torna-se "...-O.webp" ou "...-O.jpg".
-           - Isso garante a imagem na maior qualidade disponível.
 
         4. DESCRIÇÃO:
            - Extraia os dados técnicos principais de forma concisa e profissional.
@@ -214,7 +270,7 @@ const PORT = Number(process.env.PORT) || 3000;
       `;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-2.0-flash',
         contents: prompt,
         config: {
           tools: [{ googleSearch: {} }],
@@ -229,7 +285,7 @@ const PORT = Number(process.env.PORT) || 3000;
               description: { type: Type.STRING },
               imageUrl: { type: Type.STRING },
             },
-            required: ['name', 'price', 'imageUrl', 'installmentInfo']
+            required: ['name', 'price', 'imageUrl']
           }
         }
       });
@@ -247,8 +303,9 @@ const PORT = Number(process.env.PORT) || 3000;
       });
 
     } catch (error: any) {
-      console.error('Gemini Extraction API Error:', error);
-      res.status(500).json({ error: 'Falha ao processar a URL no backend via IA.' });
+      console.error('Gemini Extraction API Error:', error?.message || error);
+      console.error('Full error:', JSON.stringify(error, null, 2));
+      res.status(500).json({ error: `Falha ao processar: ${error?.message || 'Erro desconhecido no backend.'}` });
     }
   });
 
